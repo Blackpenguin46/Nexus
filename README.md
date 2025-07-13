@@ -32,53 +32,82 @@ A production-ready autonomous AI agent inspired by ManusAI, featuring Claude 3.5
 
 ### Prerequisites
 
-- macOS with Docker Desktop
-- Python 3.11+
-- Claude API key from Anthropic
+- Python 3.10+
+- Docker Desktop (optional, for containerized deployment)
 
-### Quick Start
+### 🚀 Quick Start (3 Steps)
 
-1. **Clone and setup**:
+1. **Clone and Install Dependencies**:
 ```bash
 git clone <repository-url>
-cd Manus-remake
-cp .env.template .env
+cd Nexus
+pip3 install --user pydantic pydantic-settings python-dotenv rich fastapi uvicorn aiohttp selenium webdriver-manager PyYAML cryptography validators structlog psutil json5 aiofiles
 ```
 
-2. **Configure environment**:
-Edit `.env` file with your Claude API key:
+2. **Test the Agent** (No additional setup required):
 ```bash
-ANTHROPIC_API_KEY=your_claude_api_key_here
-```
+# Quick demo test
+python3 run-nexus.py --test
 
-3. **Build Docker image**:
-```bash
-docker build -t manus-agent .
-```
-
-4. **Run the agent**:
-```bash
 # Interactive mode
-docker run -it --rm -v $(pwd)/data:/app/data --env-file .env manus-agent
+python3 run-nexus.py --interactive
 
 # Single task
-docker run --rm -v $(pwd)/data:/app/data --env-file .env manus-agent --task "Create a Python script to calculate fibonacci numbers"
-
-# Web server mode
-docker run -p 8000:8000 --rm -v $(pwd)/data:/app/data --env-file .env manus-agent --web
+python3 run-nexus.py --task "Hello! Please introduce yourself"
 ```
+
+3. **Docker Setup** (Optional):
+```bash
+# Web interface on http://localhost:8080
+./setup-test.sh
+./run-test.sh web
+```
+
+### ⚠️ IMPORTANT for Git Clone Users
+
+**If you cloned this repo, the following fixes have been applied:**
+
+- ✅ PyTorch made optional (use `LLM__PROVIDER=mock` for testing)
+- ✅ Working directory changed from `/app/data` to `./data`
+- ✅ Terminal freeze issues fixed with timeout protection
+- ✅ Configuration simplified for local development
+
+**See `SETUP.md` for detailed setup instructions.**
 
 ### Development Setup
 
-1. **Install dependencies**:
+1. **Local Development**:
 ```bash
-pip install poetry
-poetry install
+# Use the simple test runner (recommended)
+python3 run-nexus.py --interactive
+
+# Or traditional method (requires proper .env setup)
+python -m manus.cli --debug
 ```
 
-2. **Run locally**:
+2. **Docker Development**:
 ```bash
-poetry run python -m manus.cli
+# Interactive mode
+./run-test.sh interactive
+
+# Web server mode  
+./run-test.sh web
+```
+
+### Configuration
+
+**For local testing** (in `.env`):
+```bash
+LLM__PROVIDER=mock          # Use mock for testing
+AGENT__NAME=nexus-agent
+DEBUG_MODE=true
+MANUS_WORKING_DIR=./data
+```
+
+**For production** (add your API keys):
+```bash
+LLM__PROVIDER=anthropic     # Or huggingface, ollama
+ANTHROPIC_API_KEY=your_key_here
 ```
 
 ## 🎯 Usage

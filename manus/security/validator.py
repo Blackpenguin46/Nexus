@@ -36,7 +36,9 @@ class SecurityValidator:
             'ls', 'pwd', 'echo', 'cat', 'grep', 'find', 'head', 'tail',
             'wc', 'sort', 'uniq', 'cut', 'awk', 'sed', 'git', 'pip',
             'python', 'python3', 'node', 'npm', 'curl', 'wget', 'mkdir',
-            'touch', 'cp', 'mv', 'chmod', 'which', 'whoami', 'date'
+            'touch', 'cp', 'mv', 'chmod', 'which', 'whoami', 'date',
+            'uname', 'ps', 'top', 'df', 'du', 'free', 'uptime', 'id',
+            'env', 'printenv', 'file', 'stat', 'tree', 'history'
         }
         
         self.FORBIDDEN_PATTERNS = [
@@ -77,8 +79,17 @@ class SecurityValidator:
         ]
         
         # Safe base paths for file operations
+        # Include local development paths
+        import os
+        current_dir = os.getcwd()
+        working_dir = os.environ.get('MANUS_WORKING_DIR', '/app/data')
+        
         self.ALLOWED_BASE_PATHS = [
-            '/app', '/tmp', '/home/manus', '/var/tmp/manus'
+            '/app', '/tmp', '/home/manus', '/var/tmp/manus',
+            current_dir,  # Allow current directory for local development
+            working_dir,  # Allow configured working directory
+            str(Path(current_dir) / 'data'),  # Allow data subdirectory
+            str(Path(working_dir).parent) if working_dir != '/app/data' else '/app'  # Allow parent of working dir
         ]
         
         # Network validation

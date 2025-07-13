@@ -1,0 +1,169 @@
+version: '3.8'
+
+services:
+  # Main agent service in web mode
+  nexus-agent-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nexus-agent-web
+    restart: unless-stopped
+    
+    # Security configuration
+    security_opt:
+      - no-new-privileges:true
+    read_only: false  # Agent needs write access
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.8'
+        reservations:
+          memory: 256M
+          cpus: '0.2'
+    
+    # Environment configuration
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DISPLAY=:99
+      - DEBUG_MODE=true
+    
+    # Volume mounts
+    volumes:
+      - ./data:/app/data:rw
+      - ./logs:/var/log/manus:rw
+      - nexus_tmp:/tmp:rw
+    
+    # Port mapping for web interface
+    ports:
+      - "8080:8000"
+    
+    # Environment file
+    env_file:
+      - .env
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+    
+    # Init system for proper signal handling
+    init: true
+    
+    # Override command for web mode
+    command: ["python", "-m", "manus.cli", "--web", "--host", "0.0.0.0", "--port", "8000", "--debug"]
+
+  # Agent service in interactive mode for testing
+  nexus-agent-interactive:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nexus-agent-interactive
+    restart: "no"  # Don't restart for interactive mode
+    
+    # Security configuration
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.8'
+        reservations:
+          memory: 256M
+          cpus: '0.2'
+    
+    # Environment configuration
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DISPLAY=:99
+      - DEBUG_MODE=true
+    
+    # Volume mounts (shared with web service)
+    volumes:
+      - ./data:/app/data:rw
+      - ./logs:/var/log/manus:rw
+      - nexus_tmp:/tmp:rw
+    
+    # Environment file
+    env_file:
+      - .env
+    
+    # Interactive mode with TTY
+    stdin_open: true
+    tty: true
+    
+    # Override command for interactive mode
+    command: ["python", "-m", "manus.cli", "--interactive", "--debug"]
+    
+    # Profile to control when this runs
+    profiles:
+      - interactive
+
+  # Single task execution service
+  nexus-agent-task:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nexus-agent-task
+    restart: "no"
+    
+    # Security configuration
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.8'
+    
+    # Environment configuration
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DISPLAY=:99
+      - DEBUG_MODE=true
+    
+    # Volume mounts
+    volumes:
+      - ./data:/app/data:rw
+      - ./logs:/var/log/manus:rw
+      - nexus_tmp:/tmp:rw
+    
+    # Environment file
+    env_file:
+      - .env
+    
+    # Override command for task mode (will be set via environment)
+    command: ["python", "-m", "manus.cli", "--task", "Hello! Please introduce yourself and show me what you can do.", "--debug"]
+    
+    # Profile to control when this runs
+    profiles:
+      - task
+
+# Volumes
+volumes:
+  nexus_tmp:
+    driver: local
+
+# Networks (using default bridge)
+networks:
+  default:
+    name: nexus-network

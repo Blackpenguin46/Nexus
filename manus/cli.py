@@ -47,10 +47,22 @@ async def run_agent_interactive(agent: ManusAgent) -> None:
         border_style="blue"
     ))
     
-    while True:
+    max_attempts = 1000  # Prevent infinite loops
+    attempt_count = 0
+    
+    while attempt_count < max_attempts and not agent._shutdown_requested:
         try:
-            # Get user input
-            user_input = Prompt.ask("\n[bold blue]Manus[/bold blue]")
+            attempt_count += 1
+            
+            # Get user input with timeout protection
+            try:
+                user_input = await asyncio.wait_for(
+                    asyncio.to_thread(Prompt.ask, "\n[bold blue]Manus[/bold blue]"),
+                    timeout=300.0  # 5 minute timeout
+                )
+            except asyncio.TimeoutError:
+                console.print("[yellow]Input timeout - type 'exit' to quit[/yellow]")
+                continue
             
             if not user_input.strip():
                 continue
@@ -113,8 +125,15 @@ async def run_agent_interactive(agent: ManusAgent) -> None:
         
         except KeyboardInterrupt:
             console.print("\n[yellow]Use 'exit' to quit properly[/yellow]")
+            break
         except EOFError:
             break
+        except Exception as e:
+            console.print(f"[red]Unexpected error: {e}[/red]")
+            console.print("[yellow]Type 'exit' to quit safely[/yellow]")
+    
+    if attempt_count >= max_attempts:
+        console.print("[yellow]Maximum interaction attempts reached[/yellow]")
     
     console.print("[yellow]Goodbye![/yellow]")
 

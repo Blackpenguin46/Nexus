@@ -84,11 +84,16 @@ class AgentLoop:
             # Add initial user message
             state.add_message("user", task_prompt)
             
-            # Main agent loop
+            # Main agent loop with safety checks
             for iteration in range(max_iterations):
                 self.logger.debug(f"Agent loop iteration {iteration + 1}/{max_iterations}")
                 
                 try:
+                    # Check for shutdown request
+                    if state and hasattr(state, '_shutdown_requested') and state._shutdown_requested:
+                        self.logger.info("Shutdown requested, stopping task execution")
+                        break
+                    
                     # Check timeout
                     if time.time() - start_time > self.config.agent.timeout_seconds:
                         raise TimeoutError(
@@ -97,9 +102,17 @@ class AgentLoop:
                             timeout_seconds=self.config.agent.timeout_seconds
                         )
                     
-                    # Execute one iteration of the loop
+                    # Execute one iteration with timeout protection
                     iteration_start = time.time()
-                    should_continue = await self._execute_iteration(state, iteration)
+                    try:
+                        should_continue = await asyncio.wait_for(
+                            self._execute_iteration(state, iteration),
+                            timeout=60.0  # 60 second per-iteration timeout
+                        )
+                    except asyncio.TimeoutError:
+                        self.logger.warning(f"Iteration {iteration + 1} timed out")
+                        should_continue = False
+                    
                     iteration_time = time.time() - iteration_start
                     
                     self.iteration_times.append(iteration_time)

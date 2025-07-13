@@ -1,159 +1,116 @@
-#!/bin/bash
+#!/usr/bin/env python3
+"""
+Nexus - Autonomous AI Agent CLI
+Direct command-line interface similar to Claude Code
 
-# Nexus - Terminal interface for Manus Agent
-# Usage: ./nexus
+Usage:
+  nexus [task description]
+  nexus --interactive
+  nexus --test
+  nexus --web
+"""
 
-# Colors for better UX
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-RESET='\033[0m'
+import sys
+import os
+import asyncio
+from pathlib import Path
 
-# Check if agent is running
-check_agent() {
-    if ! curl -s http://localhost:8080/status > /dev/null 2>&1; then
-        echo -e "${RED}❌ Nexus agent is not running.${RESET}"
-        echo -e "${YELLOW}Starting agent...${RESET}"
-        
-        # Change to the correct directory
-        cd /Users/samoakes/Desktop/Projects/Manus-remake
-        docker-compose up -d
-        echo -e "${YELLOW}Waiting for agent to initialize...${RESET}"
-        sleep 10
-        
-        # Check again
-        if ! curl -s http://localhost:8080/status > /dev/null 2>&1; then
-            echo -e "${RED}❌ Failed to start agent. Run 'docker-compose logs manus-agent' to check errors.${RESET}"
-            exit 1
-        fi
-    fi
-}
+# Add the project root to Python path
+project_root = Path(__file__).parent
+sys.path.insert(0, str(project_root))
 
-# Send task to agent
-send_task() {
-    local prompt="$1"
-    
-    echo -e "${YELLOW}🤖 Nexus is thinking...${RESET}"
-    
-    # Send request to agent API
-    response=$(curl -s -X POST http://localhost:8080/task \
-        -H "Content-Type: application/json" \
-        -d "{\"prompt\": \"$prompt\"}" 2>/dev/null)
-    
-    if [ $? -eq 0 ] && [ -n "$response" ]; then
-        # Parse and display response
-        echo "$response" | python3 -c "
-import json, sys
 try:
-    data = json.load(sys.stdin)
-    if data.get('success', False):
-        result = data.get('result', 'No result')
-        print('${GREEN}✅ Nexus:${RESET}')
-        print(result)
-        
-        # Show metrics if available
-        if 'execution_time' in data:
-            exec_time = data['execution_time']
-            iterations = data.get('iterations', 0)
-            print(f'${BLUE}ℹ️  Completed in {exec_time:.2f}s ({iterations} iterations)${RESET}')
+    from run_nexus import main
+except ImportError:
+    # Fallback import
+    import subprocess
+    
+    def main():
+        """Fallback to running run-nexus.py directly"""
+        script_path = project_root / "run-nexus.py"
+        if script_path.exists():
+            cmd = [sys.executable, str(script_path)] + sys.argv[1:]
+            subprocess.run(cmd)
+        else:
+            print("❌ Error: Could not find run-nexus.py")
+            sys.exit(1)
+
+def parse_args():
+    """Parse command line arguments"""
+    if len(sys.argv) == 1:
+        # No arguments - start interactive mode
+        return ["--interactive"]
+    
+    args = sys.argv[1:]
+    
+    # Handle special flags
+    if args[0] in ["--help", "-h"]:
+        print_help()
+        sys.exit(0)
+    elif args[0] in ["--interactive", "-i"]:
+        return ["--interactive"]
+    elif args[0] in ["--test", "-t"]:
+        return ["--test"]
+    elif args[0] in ["--web", "-w"]:
+        return ["--web"]
+    elif args[0] in ["--version", "-v"]:
+        print("Nexus Agent v2.0 - Autonomous AI Assistant")
+        sys.exit(0)
     else:
-        error = data.get('result', 'Unknown error')
-        print('${RED}❌ Error:${RESET}')
-        print(error)
-except Exception as e:
-    print('${RED}❌ Failed to parse response from agent${RESET}')
-    print(f'Response: {sys.stdin.read()[:200]}...')
-"
-    else
-        echo -e "${RED}❌ Failed to communicate with agent${RESET}"
-    fi
-}
+        # Join all arguments as a single task
+        task = " ".join(args)
+        return ["--task", task]
 
-# Handle special commands
-handle_command() {
-    case "$1" in
-        "exit"|"quit"|"bye")
-            echo -e "${GREEN}👋 Goodbye!${RESET}"
-            exit 0
-            ;;
-        "help")
-            echo -e "${YELLOW}Nexus Commands:${RESET}"
-            echo "  • Type any task or question naturally"
-            echo "  • 'status' - Check agent status"
-            echo "  • 'help' - Show this help"
-            echo "  • 'exit' - Quit Nexus"
-            return 0
-            ;;
-        "status")
-            echo -e "${YELLOW}🔍 Checking agent status...${RESET}"
-            status=$(curl -s http://localhost:8080/status 2>/dev/null)
-            if [ $? -eq 0 ]; then
-                echo "$status" | python3 -c "
-import json, sys
-try:
-    data = json.load(sys.stdin)
-    print('${GREEN}✅ Agent Status:${RESET}')
-    print(f'  Session: {data[\"session_id\"][:8]}...')
-    print(f'  Running: {data[\"running\"]}')
-    print(f'  Total Tasks: {data[\"total_tasks\"]}')
-    print(f'  Available Tools: {len(data[\"available_tools\"])}')
-except:
-    print('${RED}❌ Failed to get status${RESET}')
-"
-            else
-                echo -e "${RED}❌ Agent not responding${RESET}"
-            fi
-            return 0
-            ;;
-        *)
-            return 1
-            ;;
-    esac
-}
+def print_help():
+    """Print help message"""
+    help_text = """
+🤖 Nexus - Autonomous AI Agent
 
-# Main function
-main() {
-    clear
-    echo -e "${BLUE}╔══════════════════════════════════════╗${RESET}"
-    echo -e "${BLUE}║           🤖 NEXUS AGENT            ║${RESET}"
-    echo -e "${BLUE}║      Autonomous AI Assistant        ║${RESET}"
-    echo -e "${BLUE}╚══════════════════════════════════════╝${RESET}"
-    echo
-    
-    # Check if agent is running
-    check_agent
-    
-    echo -e "${GREEN}✅ Nexus is ready!${RESET}"
-    echo -e "${YELLOW}Type your prompts below. Commands: 'status', 'help', 'exit'${RESET}"
-    echo
-    
-    while true; do
-        printf "${BLUE}You: ${RESET}"
-        
-        # Read input properly
-        if ! read -r input; then
-            echo
-            echo -e "${GREEN}👋 Goodbye!${RESET}"
-            break
-        fi
-        
-        # Handle empty input
-        if [ -z "$input" ]; then
-            continue
-        fi
-        
-        # Check for special commands first
-        if handle_command "$input"; then
-            echo
-            continue
-        fi
-        
-        # Send task to agent
-        send_task "$input"
-        echo
-    done
-}
+Usage:
+  nexus [task description]           Execute a single task
+  nexus --interactive, -i            Start interactive mode
+  nexus --test, -t                   Run demo tests
+  nexus --web, -w                    Start web interface
+  nexus --help, -h                   Show this help
+  nexus --version, -v                Show version
 
-# Run main function
-main
+Examples:
+  nexus "Create a hello world script"
+  nexus "What's the current date?"
+  nexus "List all files in this directory"
+  nexus "Create a Python project structure"
+  nexus --interactive
+  nexus --test
+
+Features:
+  ✅ Sophisticated reasoning engine
+  ✅ Multi-step task planning
+  ✅ 21+ powerful tools
+  ✅ Security validation
+  ✅ Local operation (no API costs)
+
+Documentation:
+  📚 Read QUICK_START.md for setup
+  💻 Read HOW_TO_CLI.md for detailed usage
+  🚀 Read HOW_TO_DEPLOY.md for deployment
+"""
+    print(help_text)
+
+if __name__ == "__main__":
+    try:
+        # Parse arguments and run
+        parsed_args = parse_args()
+        
+        # Update sys.argv for the main script
+        sys.argv = [sys.argv[0]] + parsed_args
+        
+        # Run the main application
+        main()
+        
+    except KeyboardInterrupt:
+        print("\n👋 Goodbye!")
+        sys.exit(0)
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        print("\n💡 Try: nexus --help")
+        sys.exit(1)
