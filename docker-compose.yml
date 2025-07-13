@@ -1,0 +1,87 @@
+services:
+  manus-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: manus-agent
+    restart: unless-stopped
+    
+    # Security configuration
+    security_opt:
+      - no-new-privileges:true
+    read_only: false  # Some tools need write access to /tmp
+    
+    # Resource limits for security and performance
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    
+    # Environment configuration
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DISPLAY=:99
+    
+    # Volume mounts for persistence and logging
+    volumes:
+      - ./data:/app/data:rw
+      - ./logs:/var/log/manus:rw
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - agent_tmp:/tmp:rw
+    
+    # Network configuration - using default bridge network
+    
+    # Port mapping (if web interface is enabled)
+    ports:
+      - "8080:8000"
+    
+    # Environment file
+    env_file:
+      - .env
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import manus; print('OK')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+    
+    # Init system for proper signal handling
+    init: true
+    
+    # User and group for security
+    user: manus:manus
+
+  # Optional: Redis for caching (commented out for minimal setup)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: manus-redis
+  #   restart: unless-stopped
+  #   networks:
+  #     - manus-network
+  #   volumes:
+  #     - redis_data:/data
+  #   security_opt:
+  #     - no-new-privileges:true
+
+# Using default Docker network to avoid conflicts
+
+# Volumes
+volumes:
+  agent_tmp:
+    driver: local
+  # redis_data:
+  #   driver: local
+

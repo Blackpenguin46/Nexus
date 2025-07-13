@@ -1,0 +1,44 @@
+# Core dependencies
+asyncio
+aiohttp>=3.8.0
+pydantic>=2.0.0
+python-dotenv>=1.0.0
+
+# LLM and AI dependencies
+torch>=2.0.0
+transformers>=4.30.0
+tokenizers>=0.13.0
+accelerate>=0.20.0
+bitsandbytes>=0.39.0  # For quantization
+sentencepiece>=0.1.99  # For some tokenizers
+
+# Browser automation
+selenium>=4.10.0
+webdriver-manager>=3.8.0
+
+# File and data handling
+pathlib
+json5
+PyYAML>=6.0
+
+# Security and validation
+cryptography>=40.0.0
+validators>=0.20.0
+
+# Logging and monitoring
+structlog>=23.1.0
+rich>=13.0.0
+
+# Development and testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-mock>=3.11.0
+black>=23.0.0
+ruff>=0.0.280
+mypy>=1.4.0
+
+# Optional: Ollama client (if using Ollama)
+# ollama>=0.1.0
+
+# System utilities
+psutil>=5.9.0

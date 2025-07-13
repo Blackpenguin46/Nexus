@@ -1,0 +1,15 @@
+# Development overrides for local development
+# Use: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  manus-agent:
+    build:
+      target: base
+    volumes:
+      - .:/app:rw  # Mount source code for development
+      - ./data:/app/data:rw
+      - ./logs:/var/log/manus:rw
+    environment:
+      - DEBUG_MODE=true
+      - ENABLE_DETAILED_LOGGING=true
+    command: ["python", "-m", "manus.cli", "--debug"]
