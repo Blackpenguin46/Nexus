@@ -36,7 +36,12 @@ class ShellTools:
         self.max_output_size = 1024 * 1024  # 1MB
         
         # Current working directory for shell operations
-        self.working_directory = "/app/data"
+        # Use environment variable or default to local data directory
+        self.working_directory = os.environ.get('MANUS_WORKING_DIR', "/app/data")
+        
+        # For local testing, use current directory if /app/data doesn't exist
+        if not Path(self.working_directory).parent.exists():
+            self.working_directory = str(Path.cwd() / "data")
         
         # Ensure working directory exists
         Path(self.working_directory).mkdir(parents=True, exist_ok=True)
